@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taiwan Flip Clock - 全思源宋體版 V2.5</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* --- 變數定義 --- */
+        :root {
+            --bg-color: #121212;
+            --card-bg: #222;
+            --text-color: #e0e0e0;
+            --accent-color: #ff4757;
+            --break-color: #2ed573;
+            --panel-bg: rgba(255,255,255,0.05);
+            --shadow: rgba(0,0,0,0.5);
+            --input-bg: #333;
+            --input-text: #fff;
+        }
+
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --panel-bg: rgba(0,0,0,0.05);
+            --shadow: rgba(0,0,0,0.1);
+            --input-bg: #fff;
+            --input-text: #333;
+        }
+
+        /* --- 全域字體設定：強制使用思源宋體 --- */
+        * {
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        /* --- 頂部功能按鈕 --- */
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 200;
+        }
+        .tool-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: 0.2s;
+            font-weight: 700;
+        }
+        .tool-btn:hover { opacity: 1; background: var(--accent-color); color: white; border-color: var(--accent-color); }
+
+        /* --- 左下角影片播放器 --- */
+        .video-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+            transition: opacity 0.3s;
+        }
+        body.fullscreen .video-container { opacity: 0.1; }
+        body.fullscreen .video-container:hover { opacity: 1; }
+
+        .yt-frame {
+            width: 100%;
+            height: 157px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px var(--shadow);
+        }
+        .video-input-group { display: flex; gap: 5px; }
+        .vid-input {
+            flex: 1; background: var(--input-bg); border: 1px solid #555;
+            color: var(--input-text); padding: 5px 10px; border-radius: 4px; font-size: 12px;
+        }
+        .vid-btn { background: #555; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 0 10px; font-size: 12px; font-weight: 700; }
+
+        /* --- 翻頁時鐘視覺 --- */
+        .clock-container {
+            display: flex;
+            gap: 12px;
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+        .card {
+            position: relative; width: 90px; height: 135px;
+            background: var(--card-bg); border-radius: 8px;
+            font-size: 85px; font-weight: 900; line-height: 135px;
+            text-align: center; box-shadow: 0 5px 15px var(--shadow);
+        }
+        .top-half, .bottom-half, .top-flip, .bottom-flip {
+            position: absolute; left: 0; width: 100%; height: 50%;
+            overflow: hidden; background: var(--card-bg); backface-visibility: hidden;
+        }
+        .top-half, .top-flip { top: 0; border-radius: 8px 8px 0 0; border-bottom: 1px solid rgba(128,128,128,0.2); }
+        .bottom-half, .bottom-flip { bottom: 0; border-radius: 0 0 8px 8px; line-height: 0; }
+        .top-flip { transform-origin: bottom; z-index: 2; }
+        .bottom-flip { transform-origin: top; transform: rotateX(90deg); z-index: 1; }
+
+        @keyframes flipTop { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(-90deg); } }
+        @keyframes flipBottom { 0% { transform: rotateX(90deg); } 100% { transform: rotateX(0deg); } }
+        .flipping .top-flip { animation: flipTop 0.3s ease-in forwards; }
+        .flipping .bottom-flip { animation: flipBottom 0.3s ease-out 0.3s forwards; }
+        .colon { font-size: 50px; margin-top: 20px; opacity: 0.5; font-weight: 900; }
+
+        /* --- 番茄鐘面板與繁星加油 --- */
+        .pomo-panel {
+            background: var(--panel-bg);
+            padding: 25px 30px;
+            border-radius: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 320px;
+        }
+
+        .slogan {
+            font-weight: 900;
+            font-size: 1.8rem;
+            letter-spacing: 8px;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .status-badge { font-weight: 700; font-size: 14px; color: var(--accent-color); margin-bottom: 5px; letter-spacing: 2px; }
+        .timer-display { font-size: 55px; font-weight: 900; margin: 5px 0; }
+        .settings-area { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; font-size: 12px; font-weight: 700; }
+        .settings-area input { width: 40px; background: var(--input-bg); border: none; color: var(--input-text); text-align: center; border-radius: 4px; padding: 2px; font-weight: 700; }
+
+        .controls { display: flex; gap: 10px; justify-content: center; }
+        .btn { border: none; padding: 10px 24px; border-radius: 30px; font-size: 15px; font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .btn-start { background: var(--accent-color); color: white; }
+        .btn-reset { background: #7f8c8d; color: white; }
+        .stats { margin-top: 15px; font-size: 13px; opacity: 0.6; font-weight: 700; }
+
+        @media (max-width: 768px) {
+            .clock-container { transform: scale(0.6); margin-bottom: 10px; }
+            .video-container { position: relative; left: 0; bottom: 0; width: 100%; margin-top: 15px; }
+        }
+    </style>
+</head>
+<body class="dark-mode">
+
+    <div class="toolbar">
+        <button class="tool-btn" onclick="toggleTheme()" id="themeBtn">☀ 淺色模式</button>
+        <button class="tool-btn" onclick="toggleFullscreen()">⛶ 全螢幕</button>
+    </div>
+
+    <div class="video-container">
+        <div class="yt-frame">
+            <iframe id="ytPlayer" width="100%" height="100%" 
+                src="https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&mute=1&controls=1&loop=1&playlist=jfKfPfyJRdk" 
+                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+            </iframe>
+        </div>
+        <div class="video-input-group">
+            <input type="text" id="videoUrlInput" class="vid-input" placeholder="貼上 YouTube 網址">
+            <button class="vid-btn" onclick="changeVideoByUrl()">載入</button>
+        </div>
+    </div>
+
+    <div class="clock-container">
+        <div class="card" id="h1"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+        <div class="card" id="h2"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+        <div class="colon">:</div>
+        <div class="card" id="m1"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+        <div class="card" id="m2"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+        <div class="colon">:</div>
+        <div class="card" id="s1"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+        <div class="card" id="s2"><div class="top-half">0</div><div class="bottom-half">0</div><div class="top-flip">0</div><div class="bottom-flip">0</div></div>
+    </div>
+
+    <div class="pomo-panel">
+        <div class="slogan">繁星加油</div>
+        <div class="status-badge" id="pStatus">FOCUS TIME</div>
+        <div class="timer-display" id="pDisplay">25:00</div>
+        <div class="settings-area">
+            <label>工作: <input type="number" id="workInput" value="25"> 分</label>
+            <label>休息: <input type="number" id="breakInput" value="5"> 分</label>
+        </div>
+        <div class="controls">
+            <button class="btn btn-start" id="startBtn" onclick="toggleTimer()">開始</button>
+            <button class="btn btn-reset" onclick="resetTimer()">重置</button>
+        </div>
+        <div class="stats">已完成番茄: <span id="tomatoCount">0</span> 🍅</div>
+    </div>
+
+    <script>
+        // --- YouTube 網址提取 ID ---
+        function extractVideoId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        function changeVideoByUrl() {
+            const url = document.getElementById('videoUrlInput').value.trim();
+            const videoId = extractVideoId(url);
+            if (videoId) {
+                document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${videoId}`;
+            } else if (url.length === 11) {
+                document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${url}?autoplay=1&mute=1&controls=1&loop=1&playlist=${url}`;
+            } else {
+                alert("請輸入有效的 YouTube 影片網址！");
+            }
+        }
+
+        // --- 翻頁時鐘核心 ---
+        function flip(id, newVal) {
+            const el = document.getElementById(id);
+            const topHalf = el.querySelector('.top-half'), bottomHalf = el.querySelector('.bottom-half');
+            const topFlip = el.querySelector('.top-flip'), bottomFlip = el.querySelector('.bottom-flip');
+            const currVal = topHalf.innerText;
+            if (newVal !== currVal) {
+                topFlip.innerText = currVal; bottomFlip.innerText = newVal;
+                topHalf.innerText = newVal; bottomHalf.innerText = currVal; 
+                el.classList.remove('flipping'); void el.offsetWidth; el.classList.add('flipping');
+                setTimeout(() => {
+                    bottomHalf.innerText = newVal; el.classList.remove('flipping');
+                    topFlip.innerText = newVal; bottomFlip.innerText = newVal;
+                }, 600);
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const tw = new Date(utc + (3600000 * 8));
+            const h = String(tw.getHours()).padStart(2, '0'), m = String(tw.getMinutes()).padStart(2, '0'), s = String(tw.getSeconds()).padStart(2, '0');
+            flip('h1', h[0]); flip('h2', h[1]); flip('m1', m[0]); flip('m2', m[1]); flip('s1', s[0]); flip('s2', s[1]);
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        // --- 番茄鐘邏輯 ---
+        let timer = null, timeLeft = 1500, isRunning = false, isFocus = true, tomatoes = 0;
+        const display = document.getElementById('pDisplay'), startBtn = document.getElementById('startBtn'), statusTxt = document.getElementById('pStatus'), countTxt = document.getElementById('tomatoCount');
+        
+        function playAlarm() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            osc.start(); osc.stop(ctx.currentTime + 0.5);
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timer); startBtn.innerText = "繼續";
+            } else {
+                if (timer === null) {
+                    const workMin = parseInt(document.getElementById('workInput').value) || 25;
+                    const breakMin = parseInt(document.getElementById('breakInput').value) || 5;
+                    timeLeft = (isFocus ? workMin : breakMin) * 60;
+                }
+                timer = setInterval(() => {
+                    timeLeft--;
+                    display.innerText = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer); playAlarm(); isRunning = false; timer = null;
+                        if(isFocus) {
+                            tomatoes++; countTxt.innerText = tomatoes; isFocus = false;
+                            statusTxt.innerText = "BREAK TIME"; statusTxt.style.color = "var(--break-color)";
+                        } else {
+                            isFocus = true; statusTxt.innerText = "FOCUS TIME"; statusTxt.style.color = "var(--accent-color)";
+                        }
+                        const workMin = parseInt(document.getElementById('workInput').value) || 25;
+                        const breakMin = parseInt(document.getElementById('breakInput').value) || 5;
+                        timeLeft = (isFocus ? workMin : breakMin) * 60;
+                        display.innerText = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+                        startBtn.innerText = "開始";
+                    }
+                }, 1000);
+                startBtn.innerText = "暫停";
+            }
+            isRunning = !isRunning;
+        }
+
+        function resetTimer() {
+            clearInterval(timer); isRunning = false; isFocus = true; timer = null;
+            const workMin = parseInt(document.getElementById('workInput').value) || 25;
+            timeLeft = workMin * 60;
+            display.innerText = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:00`;
+            startBtn.innerText = "開始"; statusTxt.innerText = "FOCUS TIME"; statusTxt.style.color = "var(--accent-color)";
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            document.getElementById('themeBtn').innerText = document.body.classList.contains('light-mode') ? "🌙 深色模式" : "☀ 淺色模式";
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); document.body.classList.add('fullscreen'); }
+            else { document.exitFullscreen(); document.body.classList.remove('fullscreen'); }
+        }
+    </script>
+</body>
+</html>
